@@ -1,4 +1,4 @@
-#Mikrocontroller-Implementierung-eines-einfachen-Kalkulators
+#Mikrocontroller-Implementierung_eines_einfachen_Kalkulators
 
 Dieses Projekt implementiert einen einfach Kalkulator, bestehend aus einer PC‑Anwendung zur Eingabe mathematischer Ausdrücke und einer Mikrocontroller‑Anwendung auf Basis eines Arduino Uno R3, das die Berechnung durchführt.
 
