@@ -1,1 +1,121 @@
+/*
+  Kalkulator-Programm
+  Empfängt einen mathematischen Ausdruck der Form: <zahl> <operator> <zahl>
+  Unterstützte Operatoren:
+  + - * / 
+
+  Gibt das Ergebnis über UART zurück
+*/
+
+// Puffer zum Speichern der eingehenden Nachricht
+String eingabe = "";
+
+// Flag, das signalisiert, dass eine vollständige Nachricht empfangen wurde
+bool neueNachricht = false;
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println("Recheneinheit bereit.");
+}
+
+void loop() {
+
+  /*
+    --- UART-Empfänger ---
+  */
+
+  while (Serial.available() > 0) {
+    char zeichen = Serial.read();
+
+    // Prüfen, ob das Ende der Nachricht erreicht ist
+    // Das Zeilenende '\n' wurde vom PC beim Senden angehängt
+    if (zeichen == '\n') {
+      neueNachricht = true;
+    } else {
+      // Zeichen an den Eingabepuffer anhängen
+      eingabe += zeichen;
+    }
+  }
+
+  /*
+      --- Parser ---
+    */
+
+  if (neueNachricht) {
+    // Entfernt führende und nachfolgende Leerzeichen
+    eingabe.trim();
+
+    // Variablen für die beiden Operanden
+    long zahl1 = 0;
+    long zahl2 = 0;
+
+    char operatorZeichen = 0;
+
+    int gelesen = sscanf(
+      eingabe.c_str(),
+      "%ld %c %ld",               //Erwartetes Format: "Zahl Operator Zahl"
+      &zahl1,
+      &operatorZeichen,
+      &zahl2);
+
+
+    // Prüfen, ob alle drei Werte erfolgreich gelesen wurden
+    if (gelesen == 3) {
+      long ergebnis = 0;
+      bool gueltig = true;
+      String fehler = "";
+
+
+      /*
+        +++ Recheneinheit +++
+      */
+
+      switch (operatorZeichen) {
+
+        case '+':
+          ergebnis = zahl1 + zahl2;
+          break;
+
+        case '-':
+          ergebnis = zahl1 - zahl2;
+          break;
+
+        case '*':
+          ergebnis = zahl1 * zahl2;
+          break;
+
+        case '/':
+          if (zahl2 != 0) {
+            ergebnis = zahl1 / zahl2;
+          } else {
+            gueltig = false;
+            fehler = "Fehler: Division durch Null";
+          }
+          break;
+
+        default:
+          gueltig = false;
+          fehler = "Fehler: Unbekannter Operator";
+      }
+
+
+      /*
+        +++ UART-Sender +++
+      */
+
+      if (gueltig) {
+        Serial.print("Ergebnis: ");
+        Serial.println(ergebnis);
+      } else {
+        Serial.println(fehler);
+      }
+    } else {
+      Serial.println("Fehler: Ausdruck nicht erkannt");
+    }
+
+    eingabe = "";
+    neueNachricht = false;
+  }
+}
+
 
