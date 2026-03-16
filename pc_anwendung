@@ -1,1 +1,185 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <string.h>
+#include <windows.h>
 
+/*
+------------------------------------------------------------
+ Funktion: serielle_schnittstelle_oeffnen
+ Beschreibung:
+ Öffnet eine serielle Schnittstelle (z.B. COM3) und
+ konfiguriert die wichtigsten UART Parameter.
+
+ Rückgabewert:
+ HANDLE auf die Schnittstelle oder INVALID_HANDLE_VALUE
+------------------------------------------------------------
+*/
+HANDLE serielle_schnittstelle_oeffnen(const char* comPort)
+{
+    HANDLE schnittstelle;
+    DCB uartParameter = { 0 };
+
+    /* COM-Port öffnen */
+    schnittstelle = CreateFileA(
+        comPort,                // z.B. "\\\\.\\COM3"
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        0,
+        NULL
+    );
+
+    if (schnittstelle == INVALID_HANDLE_VALUE)
+    {
+        printf("Fehler: Serielle Schnittstelle konnte nicht geöffnet werden!\n");
+        return INVALID_HANDLE_VALUE;
+    }
+
+    /* aktuelle Parameter laden */
+    uartParameter.DCBlength = sizeof(uartParameter);
+    GetCommState(schnittstelle, &uartParameter);
+
+    /* UART konfigurieren */
+    uartParameter.BaudRate = CBR_9600;
+    uartParameter.ByteSize = 8;
+    uartParameter.Parity = NOPARITY;
+    uartParameter.StopBits = ONESTOPBIT;
+
+    SetCommState(schnittstelle, &uartParameter);
+
+    return schnittstelle;
+}
+
+
+/*
+------------------------------------------------------------
+ Funktion: uart_senden
+ Beschreibung:
+ Sendet einen Text über die serielle Schnittstelle
+------------------------------------------------------------
+*/
+void uart_senden(HANDLE schnittstelle, const char* text)
+{
+    DWORD gesendeteBytes;
+
+    /* Text senden */
+    WriteFile(
+        schnittstelle,
+        text,
+        (DWORD)strlen(text),
+        &gesendeteBytes,
+        NULL
+    );
+
+    /* Zeilenende senden (\n) */
+    WriteFile(schnittstelle, "\n", 1, &gesendeteBytes, NULL);
+}
+
+
+/*
+------------------------------------------------------------
+ Funktion: uart_empfangen
+ Beschreibung:
+ Liest Zeichen von der seriellen Schnittstelle bis
+ ein Zeilenumbruch empfangen wird.
+------------------------------------------------------------
+*/
+void uart_empfangen(HANDLE schnittstelle, char* puffer, int groesse)
+{
+    DWORD geleseneBytes = 0;
+    char zeichen;
+    int index = 0;
+
+    while (index < groesse - 1)
+    {
+        ReadFile(schnittstelle, &zeichen, 1, &geleseneBytes, NULL);
+
+        if (geleseneBytes > 0)
+        {
+            /* Ende der Nachricht */
+            if (zeichen == '\n')
+                break;
+
+            puffer[index++] = zeichen;
+        }
+    }
+
+    /* String terminieren */
+    puffer[index] = '\0';
+}
+
+
+/*
+------------------------------------------------------------
+ Hauptprogramm
+------------------------------------------------------------
+*/
+int main()
+{
+    HANDLE serielleSchnittstelle;
+
+    /* COM-Port öffnen */
+    serielleSchnittstelle = serielle_schnittstelle_oeffnen("\\\\.\\COM3");
+
+    if (serielleSchnittstelle == INVALID_HANDLE_VALUE)
+    {
+        printf("Konnte COM3 nicht öffnen!\n");
+        getchar();
+        return 1;
+    }
+
+    /* Logdatei öffnen */
+    FILE* log = fopen("kommunikation.txt", "a");
+
+    if (!log)
+        printf("Warnung: Logdatei konnte nicht geöffnet werden!\n");
+
+    printf("UART-Rechner gestartet\n");
+    printf("Beispiel Eingabe: 34 * 72\n");
+    printf("Mit 'exit' beenden\n\n");
+
+    while (1)
+    {
+        char eingabe[100];
+        char antwort[100];
+
+        printf("Rechenausdruck eingeben: ");
+        fgets(eingabe, sizeof(eingabe), stdin);
+
+        /* Zeilenumbruch entfernen */
+        eingabe[strcspn(eingabe, "\n")] = 0;
+
+        /* Programm beenden */
+        if (strcmp(eingabe, "exit") == 0)
+        {
+            printf("Programm wird beendet...\n");
+            break;
+        }
+
+        /* Ausdruck senden */
+        uart_senden(serielleSchnittstelle, eingabe);
+
+        if (log)
+            fprintf(log, "PC -> uC: %s\n", eingabe);
+
+        /* Antwort empfangen */
+        uart_empfangen(serielleSchnittstelle, antwort, sizeof(antwort));
+
+        printf("Antwort vom Mikrocontroller: %s\n", antwort);
+
+        if (log)
+        {
+            fprintf(log, "uC -> PC: %s\n", antwort);
+            fflush(log);
+        }
+    }
+
+    /* Aufräumen */
+    if (log)
+        fclose(log);
+
+    CloseHandle(serielleSchnittstelle);
+
+    return 0;
+}
