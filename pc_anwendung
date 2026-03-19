@@ -99,7 +99,9 @@ void uart_empfangen(HANDLE schnittstelle, char* puffer, int groesse)
         {
             /* Ende der Nachricht */
             if (zeichen == '\n')
+            {
                 break;
+            }
 
             puffer[index++] = zeichen;
         }
@@ -133,7 +135,9 @@ int main()
     FILE* log = fopen("kommunikation.txt", "a");
 
     if (!log)
+    {
         printf("Warnung: Logdatei konnte nicht geöffnet werden!\n");
+    }
 
     printf("UART-Rechner gestartet\n");
     printf("Beispiel Eingabe: 34 * 72\n");
@@ -161,7 +165,9 @@ int main()
         uart_senden(serielleSchnittstelle, eingabe);
 
         if (log)
+        {
             fprintf(log, "PC -> uC: %s\n", eingabe);
+        }
 
         /* Antwort empfangen */
         uart_empfangen(serielleSchnittstelle, antwort, sizeof(antwort));
@@ -177,7 +183,9 @@ int main()
 
     /* Aufräumen */
     if (log)
+    { 
         fclose(log);
+    }
 
     CloseHandle(serielleSchnittstelle);
 
