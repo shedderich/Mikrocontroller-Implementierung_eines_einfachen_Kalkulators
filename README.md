@@ -11,7 +11,7 @@ Das Gesamtsystem besteht aus zwei zentralen Komponenten:
   - UART-Sender
   - UART-Empfänger
   - Datenspeicher
-  -Ergebnisanzeige
+  - Ergebnisanzeige
 
 2. ** Arduino **
   - Initialisierung der seriellen Schnittstelle
